@@ -5,8 +5,9 @@ import random
 
 
 def set_ball_animation():
-    # ball_speed is declared in local scope, now available in global namespace
-    global ball_speed_x, ball_speed_y
+    # TODO: create ball class to remove variables from global namespace
+    # variables is declared in local scope, now available in global namespace
+    global ball_speed_x, ball_speed_y, player_score, opponent_score
     ball.x += ball_speed_x
     ball.y += ball_speed_y
 
@@ -15,10 +16,14 @@ def set_ball_animation():
         ball_speed_y *= -1
 
     # Reverse speed for x axis
-    if ball.left <= 0 or ball.right >= screenW:
+    if ball.left <= 0:
         ball_restart()
+        player_score += 1
+    elif ball.right >= screenW:
+        ball_restart()
+        opponent_score += 1
 
-    # Set ball to collide with player or opponent rects
+    # Set ball to collide with player or opponent rect
     if ball.colliderect(player) or ball.colliderect(opponent):
         ball_speed_x *= -1
 
@@ -79,8 +84,18 @@ ball_speed_y = 7 * random.choice((1, -1))
 player_speed = 0
 opponent_speed = 7
 
-while not game_end:
+player_score = 0
+opponent_score = 0
+top_score = 0
+high_score = f"HIGH SCORE: {top_score}"
 
+# Use SysFont() to use fonts without specifying path
+game_font = pygame.font.SysFont("ARLRDBD.TTF", 32)
+high_score_font = pygame.font.SysFont("ARLRDBD.TTF", 50)
+
+# Game loop start
+while not game_end:
+    # Event loop start
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_end = False
@@ -106,7 +121,9 @@ while not game_end:
             # Checks if the released key is arrow up
             if event.key == pygame.K_UP:
                 player_speed += 7
+    # Event loop end
 
+    # Game logic
     # DO NOT DRAW INSIDE EVENT LOOP, WILL CAUSE MAJOR LAG
     set_ball_animation()
     set_player_animation()
@@ -123,5 +140,14 @@ while not game_end:
     # Draw line to separate player and opponent
     pygame.draw.aaline(game_screen, colours.get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
 
+    # Create surface for text to be displayed, has to be below game_screen.fill
+    player_text = game_font.render(f"{player_score}", False, colours.get_colour("white"))
+    game_screen.blit(player_text, (440, 150))
+    opponent_text = game_font.render(f"{opponent_score}", False, colours.get_colour("white"))
+    game_screen.blit(opponent_text, (340, 150))
+    high_score_text = game_font.render(f"{high_score}", False, colours.get_colour("white"))
+    game_screen.blit(high_score_text, (220, 50))
+
     pygame.display.flip()
     clock.tick(60)
+# Game loop end
