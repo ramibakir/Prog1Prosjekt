@@ -85,6 +85,7 @@ while not game_end:
         if event.type == pygame.QUIT:
             game_end = False
             pygame.quit()
+            # Has to be included, else pygame.error: display Surface quit will appear
             sys.exit()
 
         # Controls
@@ -98,7 +99,7 @@ while not game_end:
                 player_speed -= 7
 
         # Checks if ANY key is released
-        if event.type == pygame.KEYDOWN:
+        if event.type == pygame.KEYUP:
             # Checks if the released key is arrow down
             if event.key == pygame.K_DOWN:
                 player_speed -= 7
@@ -106,20 +107,21 @@ while not game_end:
             if event.key == pygame.K_UP:
                 player_speed += 7
 
-        set_ball_animation()
-        set_player_animation()
-        set_opponent_animation()
+    # DO NOT DRAW INSIDE EVENT LOOP, WILL CAUSE MAJOR LAG
+    set_ball_animation()
+    set_player_animation()
+    set_opponent_animation()
 
-        # Set background color
-        game_screen.fill(background_color)
+    # Set background color
+    game_screen.fill(background_color)
 
-        # Draw the shapes needed for the game
-        pygame.draw.rect(game_screen, colours.get_colour("blue"), player)
-        pygame.draw.rect(game_screen, colours.get_colour("green"), opponent)
-        pygame.draw.ellipse(game_screen, colours.get_colour("gold"), ball)
+    # Draw the shapes needed for the game
+    pygame.draw.rect(game_screen, colours.get_colour("blue"), player)
+    pygame.draw.rect(game_screen, colours.get_colour("green"), opponent)
+    pygame.draw.ellipse(game_screen, colours.get_colour("gold"), ball)
 
-        # Draw line to separate player and opponent
-        pygame.draw.aaline(game_screen, colours.get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
+    # Draw line to separate player and opponent
+    pygame.draw.aaline(game_screen, colours.get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
 
     pygame.display.flip()
     clock.tick(60)
