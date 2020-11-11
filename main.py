@@ -1,14 +1,167 @@
+from datetime import datetime
 import pygame
-from pygame import mixer
 import sys
 import colours
 import random
+import json
+
+''' Initialize pygame '''
+pygame.init()
+''' Set screen size and specify pygame display to be this size
+also set background colour of screen to be black '''
+screenW, screenH = 800, 600
+menu_screen = pygame.display.set_mode((screenW, screenH))
+menu_screen.fill(colours.get_colour('faded-black'))
+''' Create a dict where key is players to store 
+name, points and date of win in array '''
+score_list = {'players': []}
+
+
+def render_text(text, size, colour):
+    """Render text on surface
+
+    :param text: String to render
+    :param size: Font-size to render text in
+    :param colour: Colour of text
+    :return: Surface which text is printed on
+    """
+    font = pygame.font.Font('PressStart2P-Regular.ttf', size)
+    text_surface = font.render(text, False, colours.get_colour(colour))
+
+    return text_surface
+
+
+def exit_game():
+    """Exits game
+    """
+    pygame.quit()
+    # Has to be included, else pygame.error: display Surface quit will appear
+    sys.exit()
+
+
+def blit_text(text, font_colour, font_size, x_pos, y_pos):
+    menu_screen.blit(render_text(text, font_size, font_colour), (x_pos, y_pos))
+
+
+''' Define buttons and draw to screen '''
+button_start = pygame.Rect(300, 420, 200, 30)
+button_score = pygame.Rect(300, 480, 200, 30)
+pygame.draw.rect(menu_screen, colours.get_colour('red'), button_start)
+pygame.draw.rect(menu_screen, colours.get_colour('blue'), button_score)
+
+''' Add text to screen '''
+menu_screen.blit(render_text('MAIN MENU', 30, 'white'), (270, 150))
+
+''' Add text to button_start '''
+start_text = render_text('START', 18, 'black')
+button_start_text = start_text.get_rect()
+button_start_text.center = button_start.center
+menu_screen.blit(start_text, button_start_text)
+
+''' Add text to button_score '''
+score_text = render_text('HIGH SCORE', 18, 'black')
+button_score_text = score_text.get_rect()
+button_score_text.center = button_score.center
+menu_screen.blit(score_text, button_score_text)
+
+''' Flag for menu loop '''
+menu_active = True
+
+''' Separate loop for menu which includes buttons for starting game and viewing high score
+At click on START button, menu loop will end and closes this window. Opens up a new window
+where game loop will run '''
+while menu_active:
+    pygame.display.flip()
+    ''' Get x,y position of mouse'''
+    mx, my = pygame.mouse.get_pos()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            exit_game()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            ''' Checks if position of mouse is between coordinates of button 
+            and if it is clicked. On click will break menu loop and start game '''
+            if 300 < mx <= 500 and 420 < my <= 450:
+                menu_active = False
+                pygame.quit()
+                break
+            elif 300 < mx <= 500 and 480 < my <= 510:
+                ''' Checks if position of mouse is between coordinates of button 
+                and if it is clicked. On click will break menu loop and show high score screen '''
+                menu_screen.fill(colours.get_colour('black'))
+                ''' Opens file in read mode and iterates through file
+                and gives variables data based on key specified '''
+                scores_file = open('high-score1.json', 'r')
+                score_data = json.loads(scores_file.read())
+                for data in score_data['players']:
+                    name_of_player = data['name']
+                    points = data['wins']
+                    date_of_win = data['date']
+                    print(f'{name_of_player}: {points} on {date_of_win}')
+                    ''' Add scores from file to screen, should print each score underneath the previous one.
+                    Right now, it prints both lines from file on top of each other. '''
+                    blit_text(f'{name_of_player}: {points} on {date_of_win}', 'white', 15, 50, 50)
+
+        elif event.type == pygame.KEYDOWN:
+            ''' If ESC key is pressed while on high score screen
+            will exit menu loop and start game '''
+            if event.key == pygame.K_ESCAPE:
+                menu_active = False
+
+''' Set a new screen to be used for the rest of the game '''
+game_screen = pygame.display.set_mode((screenW, screenH))
+
+
+def game_over():
+    """Exits game when one player reaches 5 points
+    If player reaches 5 first, the player has to
+    input their name in the terminal for the score
+    to be saved with their name in file.
+
+    Screen should display game over text with player name
+    or Computer with the score
+    """
+
+    global game_end
+    now = datetime.utcnow()
+    win_time = now.strftime("%d/%m/%Y")
+    ''' Opens file in append mode if it exists, if not the file will be created'''
+    with open('high-score1.json', 'a+') as f_game_over:
+        if player_score == 5:
+            ''' At game end, player will be asked to type their name in the terminal '''
+            player_name = input("Enter your name in the terminal below: ")
+            ''' Add GAME OVER to screen, appears for one second (barely visible). '''
+            game_screen.blit(render_text(f"GAME OVER - {player_name} won with {player_score} points", 15, 'white'),
+                             (55, 50))
+            ''' Appends the value of player_name, player_score and win_time to file on the player key'''
+            score_list['players'].append({
+                'name': player_name,
+                'wins': f'Score: {player_score} points',
+                'date': win_time
+            })
+            ''' Writes the values to the file '''
+            json.dump(score_list, f_game_over, ensure_ascii=False, indent=4)
+            game_end = False
+            exit_game()
+        elif opponent_score == 5:
+            ''' Add GAME OVER to screen, appears for one second (barely visible). '''
+            game_screen.blit(render_text(f"GAME OVER - Computer won with {opponent_score} points", 15, 'white'),
+                             (50, 50))
+            game_end = False
+            exit_game()
 
 
 def set_ball_animation():
-    # TODO: create ball class to remove variables from global namespace
+    """Animating the ball and setting collisions.
+    Makes use of variables declared in global scope.
+
+    Sets x and y pos of ball to be equal to a speed of 7,
+
+    If ball hits left or right wall points will be given
+    to the scorer
+    """
     # variables is declared in local scope, now available in global namespace
-    global ball_speed_x, ball_speed_y, player_score, opponent_score, score_time, opponent_length
+    global ball_speed_x, ball_speed_y, player_score, opponent_score, score_time
+
     ball.x += ball_speed_x
     ball.y += ball_speed_y
 
@@ -55,7 +208,7 @@ def set_opponent_animation():
 
 
 def ball_restart():
-    global ball_speed_x, ball_speed_y, score_time, go
+    global ball_speed_x, ball_speed_y, score_time
 
     # Set
     current_time = pygame.time.get_ticks()
@@ -65,17 +218,16 @@ def ball_restart():
     # Count down for player to be ready
     if current_time - score_time < 700:
         tomato = pygame.image.load('images/tomato.png')
-        game_screen.blit(tomato, (screenW / 2 - 10, screenH / 2 + 20))
+        game_screen.blit(tomato, (350, 250))
     if 700 < current_time - score_time < 1400:
         lemon = pygame.image.load('images/lemon.png')
-        game_screen.blit(lemon, (screenW / 2 - 10, screenH / 2 + 20))
+        game_screen.blit(lemon, (350, 250))
     if 1400 < current_time - score_time < 2000:
         apple = pygame.image.load('images/apple.png')
-        game_screen.blit(apple, (screenW / 2 - 10, screenH / 2 + 20))
+        game_screen.blit(apple, (350, 250))
     if 2000 < current_time - score_time < 3000:
         start = pygame.image.load('images/start.png')
-        game_screen.blit(start, (screenW / 2 - 10, screenH / 2 + 20))
-        mixer.music.play()
+        game_screen.blit(start, (280, 250))
 
     # If result is less than 3 secs, set ball to not move
     if current_time - score_time < 3000:
@@ -88,30 +240,15 @@ def ball_restart():
         score_time = None
 
 
-# TODO: Add comment to describe what this is
-pygame.mixer.pre_init(44100, -16, 1, 1024)
 pygame.init()
 clock = pygame.time.Clock()
-
-go = mixer.music.load('sounds/go.wav')
-
-screenW = 800
-screenH = 600
-game_screen = pygame.display.set_mode((screenW, screenH))
 pygame.display.set_caption("Ping Pong")
 
-game_end = False
-
-# Save the length in variables to give powerups later
-player_length = 140
-opponent_length = 140
-
-# Must be wrapped in an int to remove deprecation warning
-ball = pygame.Rect(int(screenW / 2 - 15), int(screenH / 2 - 15), 30, 30)
-player = pygame.Rect(int(screenW - 20), int(screenH / 2 - 70), 10, player_length)
-opponent = pygame.Rect(10, int(screenH / 2 - 70), 10, opponent_length)
-
-background_color = colours.get_colour("black")
+''' Must be wrapped in an int to remove deprecation warning.
+Define objects the objects that are essential to the game '''
+ball = pygame.Rect((int(screenW / 2 - 15), int(screenH / 2 - 15), 30, 30))
+player = pygame.Rect(int(screenW - 20), int(screenH / 2 - 70), 10, 140)
+opponent = pygame.Rect(10, int(screenH / 2 - 70), 10, 140)
 
 ball_speed_x = 7 * random.choice((1, -1))
 ball_speed_y = 7 * random.choice((1, -1))
@@ -120,75 +257,76 @@ opponent_speed = 7
 
 player_score = 0
 opponent_score = 0
-top_score = 0
-high_score = f"HIGH SCORE: {top_score}"
 
-# Use SysFont() to use fonts without specifying path
-game_font = pygame.font.SysFont("ARLRDBD.TTF", 32)
-high_score_font = pygame.font.SysFont("ARLRDBD.TTF", 50)
-
-# Score timer
-# Will start timer first time game starts
+''' Score timer - will start the first time the game starts'''
 score_time = True
 
-# Game loop start
+''' Flag for game loop '''
+game_end = False
+
+''' Game loop start '''
 while not game_end:
-    # Event loop start
+    ''' Event loop start '''
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_end = False
-            pygame.quit()
-            # Has to be included, else pygame.error: display Surface quit will appear
-            sys.exit()
+            exit_game()
 
-        # Controls
-        # Checks if ANY key is pressed
+        ''' Controls '''
+        ''' Checks if ANY key is pressed '''
         if event.type == pygame.KEYDOWN:
-            # Checks if the pressed key is arrow down
+            ''' Checks if the pressed key is arrow down '''
             if event.key == pygame.K_DOWN:
                 player_speed += 7
-            # Checks if the pressed key is arrow up
+            ''' Checks if the pressed key is arrow up '''
             if event.key == pygame.K_UP:
                 player_speed -= 7
 
-        # Checks if ANY key is released
+        ''' Checks if ANY key is released '''
         if event.type == pygame.KEYUP:
-            # Checks if the released key is arrow down
+            ''' Checks if the released key is arrow down '''
             if event.key == pygame.K_DOWN:
                 player_speed -= 7
-            # Checks if the released key is arrow up
+            ''' Checks if the released key is arrow up '''
             if event.key == pygame.K_UP:
                 player_speed += 7
-    # Event loop end
+    ''' Event loop end '''
 
-    # Game logic
+    ''' Game logic '''
     # DO NOT DRAW INSIDE EVENT LOOP, WILL CAUSE MAJOR LAG
     set_ball_animation()
     set_player_animation()
     set_opponent_animation()
+    game_over()
 
-    # Set background color
-    game_screen.fill(background_color)
+    ''' Set background color '''
+    game_screen.fill(colours.get_colour("faded-black"))
 
-    # Draw the shapes needed for the game
+    ''' Draw the shapes needed for the game '''
     pygame.draw.rect(game_screen, colours.get_colour("blue"), player)
     pygame.draw.rect(game_screen, colours.get_colour("green"), opponent)
     pygame.draw.ellipse(game_screen, colours.get_colour("gold"), ball)
 
-    # Draw line to separate player and opponent
+    ''' Draw line to separate player and opponent '''
     pygame.draw.aaline(game_screen, colours.get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
 
+    ''' '''
     if score_time:
         ball_restart()
 
-    # Create surface for text to be displayed, has to be below game_screen.fill
-    player_text = game_font.render(f"{player_score}", False, colours.get_colour("white"))
-    game_screen.blit(player_text, (440, 150))
-    opponent_text = game_font.render(f"{opponent_score}", False, colours.get_colour("white"))
-    game_screen.blit(opponent_text, (340, 150))
-    high_score_text = game_font.render(f"{high_score}", False, colours.get_colour("white"))
-    game_screen.blit(high_score_text, (343, 50))
+    ''' Create surface for text to be displayed, has to be below game_screen.fill '''
+    game_screen.blit(render_text(f"{player_score}", 25, 'white'), (440, 200))
+    game_screen.blit(render_text(f"{opponent_score}", 25, 'white'), (340, 200))
+
+    '''Opens file in reading mode and sets the first entry of file
+    at the top of the game screen during gameplay'''
+    scores_file = open('high-score1.json', 'r')
+    score_data = json.loads(scores_file.read())
+    name_of_player = score_data['players'][0]['name']
+    points = score_data['players'][0]['wins']
+    date_of_win = score_data['players'][0]['date']
+    game_screen.blit(render_text(f'{name_of_player} won - {points} on {date_of_win}', 15, 'white'), (65, 50))
 
     pygame.display.flip()
     clock.tick(60)
-# Game loop end
+''' Game loop end '''

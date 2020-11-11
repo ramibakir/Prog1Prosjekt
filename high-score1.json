@@ -1,0 +1,14 @@
+{
+    "players": [
+        {
+            "name": "developer",
+            "wins": "Score: 5 points",
+            "date": "09/11/2020"
+        },
+        {
+            "name": "tester",
+            "wins": "Score: 5 points",
+            "date": "11/11/2020"
+        }
+    ]
+}
