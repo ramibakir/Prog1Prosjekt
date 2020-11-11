@@ -1,5 +1,12 @@
 {
     "players": [
+
+    ]
+}
+
+
+{
+    "players": [
         {
             "name": "developer",
             "score": "5 points",
@@ -27,11 +34,6 @@
         },
         {
             "name": "Dana",
-            "score": "5 points",
-            "date": "11/11/2020"
-        },
-        {
-            "name": "AH",
             "score": "5 points",
             "date": "11/11/2020"
         }
