@@ -1,21 +1,26 @@
-from datetime import datetime
-import pygame
-import sys
-import colours
-import random
 import json
+import random
+import sys
+from datetime import datetime
 
-# Initialize pygame
-pygame.init()
-# Set screen size and specify pygame display to be this size
-# also set background colour of screen to be black
-screenW, screenH = 800, 600
-menu_screen = pygame.display.set_mode((screenW, screenH))
-menu_screen.fill(colours.get_colour('faded-black'))
+import pygame
 
 
-# Create a dict where key is players to store
-# name, points and date of win in array
+def get_colour(colour_name):
+    colours = {
+        "white": (255, 255, 255),
+        "black": (0, 0, 0),
+        "red": (255, 0, 0),
+        "gold": (239, 229, 51),
+        "blue": (78, 162, 196),
+        "grey": (170, 170, 170),
+        "green": (77, 206, 145),
+        'faded-black': (54, 54, 64)
+    }
+
+    for colour, name in colours.items():
+        if colour_name == colour:
+            return name
 
 
 def render_text(text, size, colour):
@@ -24,10 +29,10 @@ def render_text(text, size, colour):
     :text: String to render
     :size: Font-size to render text in
     :colour: Colour of text
-    :return: Surface which text is printed on
+    :return: Surface which text is rendered on
     """
     font = pygame.font.Font('PressStart2P-Regular.ttf', size)
-    text_surface = font.render(text, False, colours.get_colour(colour))
+    text_surface = font.render(text, False, get_colour(colour))
 
     return text_surface
 
@@ -38,78 +43,6 @@ def exit_game():
     sys.exit()
 
 
-def blit_text(text, font_colour, font_size, x_pos, y_pos):
-    menu_screen.blit(render_text(text, font_size, font_colour), (x_pos, y_pos))
-
-
-# Define buttons and draw to screen
-button_start = pygame.Rect(300, 420, 200, 30)
-button_score = pygame.Rect(300, 480, 200, 30)
-pygame.draw.rect(menu_screen, colours.get_colour('red'), button_start)
-pygame.draw.rect(menu_screen, colours.get_colour('blue'), button_score)
-
-# Add text to screen
-menu_screen.blit(render_text('MAIN MENU', 30, 'white'), (270, 150))
-
-# Add text to button_start
-start_text = render_text('START', 18, 'black')
-button_start_text = start_text.get_rect()
-button_start_text.center = button_start.center
-menu_screen.blit(start_text, button_start_text)
-
-# Add text to button_score
-score_text = render_text('HIGH SCORE', 18, 'black')
-button_score_text = score_text.get_rect()
-button_score_text.center = button_score.center
-menu_screen.blit(score_text, button_score_text)
-
-# Flag for menu loop
-menu_active = True
-
-# Separate loop for menu which includes buttons for starting game and viewing high score
-# At click on START button, menu loop will end and closes this window. Opens up a new window
-# where game loop will run
-while menu_active:
-    pygame.display.flip()
-    # Get x,y position of mouse
-    mx, my = pygame.mouse.get_pos()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            exit_game()
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Checks if position of mouse is between coordinates of button
-            # and if it is clicked. On click will break menu loop and start game
-            if 300 < mx <= 500 and 420 < my <= 450:
-                menu_active = False
-                pygame.quit()
-                break
-            elif 300 < mx <= 500 and 480 < my <= 510:
-                # Checks if position of mouse is between coordinates of button
-                # and if it is clicked. On click will break menu loop and show high score screen
-                menu_screen.fill(colours.get_colour('black'))
-                # Opens file in read mode and iterates through file
-                # and gives variables data based on key specified
-                scores_file = open('high-score1.json', 'r')
-                score_data = json.loads(scores_file.read())
-                for data in score_data['players']:
-                    name_of_player = data['name']
-                    points = data['wins']
-                    date_of_win = data['date']
-                    print(f'{name_of_player}: {points} on {date_of_win}')
-                    # Add scores from file to screen, should print each score underneath the previous one.
-                    # Right now, it prints both lines from file on top of each other.
-                    blit_text(f'{name_of_player}: {points} on {date_of_win}', 'white', 15, 50, 50 + 20)
-
-        elif event.type == pygame.KEYDOWN:
-            # If ESC key is pressed while on high score screen
-            # will exit menu loop and start game
-            if event.key == pygame.K_ESCAPE:
-                menu_active = False
-
-# Set a new screen to be used for the rest of the game
-game_screen = pygame.display.set_mode((screenW, screenH))
-
-
 def game_over():
     """Exits game when one player reaches 5 points
     If player reaches 5 first, the player has to
@@ -117,12 +50,9 @@ def game_over():
     to be saved with their name in file.
 
     Screen should display game over text with player name
-    or Computer with the score
+    or Computer with the score TODO add more info
     """
-    global game_end
-
-    now = datetime.utcnow()
-    win_time = now.strftime("%d/%m/%Y")
+    global game_end, win_time
 
     # Opens file in append mode if it exists, if not the file will be created
     if player_score == 5:
@@ -167,66 +97,116 @@ def game_over():
 
 
 def set_ball_animation():
-    """Animating the ball and setting collisions.
+    """Animates the ball and sets collisions.
     Makes use of variables declared in global scope.
 
-    Sets x and y pos of ball to be equal to a speed of 7,
+    Sets x and y pos of ball to be equal to a speed of 7.
+    The ball will then move with a speed of 7 at 60fps,
+    making it a moving ball.
 
     If ball hits left or right wall points will be given
     to the scorer
+
+    If the ball hits bottom or top edge the vertical speed
+    will be set as negative so that the ball does not disappear
+    outside of the screen.
     """
     # variables is declared in local scope, now available in global namespace
+    # Has to be the top level of the function
     global ball_speed_x, ball_speed_y, player_score, opponent_score, score_time
 
+    # Set the x and y coordinates of the ball
+    # to equal value of ball_speed_x and ball_speed_y
+    # so that the ball can start moving
     ball.x += ball_speed_x
     ball.y += ball_speed_y
 
-    # Reverse speed for y axis
+    # Reverses the vertical ball speed
+    # so that the ball "bounces off" the edge
     if ball.top <= 0 or ball.bottom >= screenH:
         ball_speed_y *= -1
-
-    # Reverse speed for x axis
-    if ball.left <= 0:
+    # Gives either player or opponent if
+    # ball hits one of the edges
+    elif ball.left <= 0:
         player_score += 1
         score_time = pygame.time.get_ticks()
     elif ball.right >= screenW:
         opponent_score += 1
         score_time = pygame.time.get_ticks()
 
-    # Set ball to collide with player or opponent rect
+    # If ball collides with player or opponent, the vertical speed
+    # will be set as negative so that the ball "bounces off"
     if ball.colliderect(player) or ball.colliderect(opponent):
         ball_speed_x *= -1
 
 
 def set_player_animation():
-    # 22 minutes video
+    """ Method which controls how player_movement is handled.
+
+    For player to be able to move up or down, the y position of
+    the player rect is initially set to 0, but will change when
+    the game registers click event on arrow keys which triggers
+    the speed to change.
+
+    Will prevent player from going off the screen by setting
+    the top position of the player rect to be the top edge of the screen (0)
+    or the bottom position of the player rect to be the equal to the screen height(600)."""
+
     player.y += player_speed
 
     # Prevent player from moving off screen
     if player.top <= 0:
         player.top = 0
-    if player.bottom >= screenH:
+    elif player.bottom >= screenH:
         player.bottom = screenH
 
 
 def set_opponent_animation():
+    """ Method for the opponent to move
+    and prevents them from moving off screen.
+
+    Opponent rect will move upwards if the top position
+    is less than the y position of the ball. Downwards
+    movement will be determined if the
+    bottom position of the opponent rect is greater
+    than the y position of the ball.
+
+    Will prevent opponent from going off the screen by setting
+    the top position of the opponent rect to be the top edge of the screen (0)
+    or the bottom position of the opponent rect to be the equal to the screen height(600)."""
+
     # Set logic for opponent to move
     if opponent.top < ball.y:
         opponent.top += opponent_speed
-    if opponent.bottom > ball.y:
+    elif opponent.bottom > ball.y:
         opponent.bottom -= opponent_speed
 
     # Prevent opponent from moving off screen
     if opponent.top <= 0:
         opponent.top = 0
-    if opponent.bottom >= screenH:
+    elif opponent.bottom >= screenH:
         opponent.bottom = screenH
 
 
 def ball_restart():
+    """ Function to which sets the ball to the center of the screen
+    if player or opponent scores a point.
+
+    For the ball to change direction after being set to the center
+    we multiply the vertical and horizontal speed with either
+    1 or -1 so that the direction is the ball goes after reset is
+    randomized.
+
+    Includes a timer which blits images to the screen which
+    acts as a countdown for the player to be ready.
+
+    If a point has been scored and the time between score_time
+    and current_time is less than 3 seconds ball will not move.
+    If it is more, ball will move in a random direction. """
     global ball_speed_x, ball_speed_y, score_time
 
-    # Set
+    # Set the value to be the time since
+    # pygame.init() was called, at that specific moment
     current_time = pygame.time.get_ticks()
     # Center the ball after it hits right or left wall
     ball.center = (int(screenW / 2), int(screenH / 2))
@@ -235,13 +215,13 @@ def ball_restart():
     if current_time - score_time < 700:
         tomato = pygame.image.load('images/tomato.png')
         game_screen.blit(tomato, (350, 250))
-    if 700 < current_time - score_time < 1400:
+    elif 700 < current_time - score_time < 1400:
         lemon = pygame.image.load('images/lemon.png')
         game_screen.blit(lemon, (350, 250))
-    if 1400 < current_time - score_time < 2000:
+    elif 1400 < current_time - score_time < 2000:
         apple = pygame.image.load('images/apple.png')
         game_screen.blit(apple, (350, 250))
-    if 2000 < current_time - score_time < 3000:
+    elif 2000 < current_time - score_time < 3000:
         start = pygame.image.load('images/start.png')
         game_screen.blit(start, (280, 250))
 
@@ -256,9 +236,98 @@ def ball_restart():
         score_time = None
 
 
+def blit_text(text, font_colour, font_size, pos_x, pos_y):
+    # TODO docstring
+    menu_screen.blit(render_text(text, font_size, font_colour), (pos_x, pos_y))
+
+
+# Initialize pygame
+pygame.init()
+pygame.display.set_caption("Pong Menu")
+# Set screen size and specify pygame display to be this size
+# also set background colour of screen to be black
+screenW, screenH = 800, 600
+menu_screen = pygame.display.set_mode((screenW, screenH))
+menu_screen.fill(get_colour('faded-black'))
+
+now = datetime.utcnow()
+win_time = now.strftime("%d/%m/%Y")
+
+# Define buttons and draw to screen
+button_start = pygame.Rect(300, 420, 200, 30)
+button_score = pygame.Rect(300, 480, 200, 30)
+pygame.draw.rect(menu_screen, get_colour('red'), button_start)
+pygame.draw.rect(menu_screen, get_colour('blue'), button_score)
+
+# Add text to screen
+menu_screen.blit(render_text('MAIN MENU', 30, 'white'), (270, 150))
+
+# Add text to button_start by creating a surface
+# for the text to be placed on top of
+start_text = render_text('START', 18, 'black')
+button_start_text = start_text.get_rect()
+button_start_text.center = button_start.center
+menu_screen.blit(start_text, button_start_text)
+
+# Add text to button_score by creating a surface
+# for the text to be placed on top of
+score_text = render_text('HIGH SCORE', 18, 'black')
+button_score_text = score_text.get_rect()
+button_score_text.center = button_score.center
+menu_screen.blit(score_text, button_score_text)
+
+# Flag for menu loop
+menu_active = True
+
+# Separate loop for menu which includes buttons for starting game and viewing high score
+# At click on START button, menu loop will end and closes this window. Opens up a new window
+# where game loop will run
+while menu_active:
+    pygame.display.flip()
+    # Get x,y position of mouse
+    mx, my = pygame.mouse.get_pos()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            exit_game()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            # Checks if position of mouse is between coordinates of button
+            # and if it is clicked. On click will break menu loop and start game
+            if 300 < mx <= 500 and 420 < my <= 450:
+                menu_active = False
+                pygame.quit()
+                break
+            elif 300 < mx <= 500 and 480 < my <= 510:
+                # Checks if position of mouse is between coordinates of button
+                # and if it is clicked. On click will break menu loop and show high score screen
+                menu_screen.fill(get_colour('black'))
+                # Opens file in read mode and iterates through file
+                # and gives variables data based on key specified
+                scores_file = open('high-score1.json', 'r')
+                score_data = json.loads(scores_file.read())
+                # TODO make comment
+                y_pos = 50
+                for data in score_data['players']:
+                    name_of_player = data['name']
+                    points = data['score']
+                    date_of_win = data['date']
+                    print(f'{name_of_player}: {points} on {date_of_win}')
+                    # Add scores from file to screen, should print each score underneath the previous one.
+                    # Right now, it prints both lines from file on top of each other.
+                    blit_text(f'{name_of_player}: {points} on {date_of_win}', 'white', 20, 50, y_pos)
+                    y_pos += 30
+
+        elif event.type == pygame.KEYDOWN:
+            # If ESC key is pressed while on high score screen
+            # will exit menu loop and start game
+            if event.key == pygame.K_ESCAPE:
+                menu_active = False
+
+# Set a new screen to be used for the rest of the game
+game_screen = pygame.display.set_mode((screenW, screenH))
+
 pygame.init()
 clock = pygame.time.Clock()
-pygame.display.set_caption("Ping Pong")
+pygame.display.set_caption("Pong Game")
 
 # Must be wrapped in an int to remove deprecation warning.
 # Define objects the objects that are essential to the game
@@ -266,11 +335,20 @@ ball = pygame.Rect((int(screenW / 2 - 15), int(screenH / 2 - 15), 30, 30))
 player = pygame.Rect(int(screenW - 20), int(screenH / 2 - 70), 10, 140)
 opponent = pygame.Rect(10, int(screenH / 2 - 70), 10, 140)
 
+# Variables for horizontal and vertical ball speed
+# so that the ball moves in a random direction when
+# the game starts
 ball_speed_x = 7 * random.choice((1, -1))
 ball_speed_y = 7 * random.choice((1, -1))
+
+# Variables to set speed of player and opponent rect
+# so that they can move. player_speed is 0 so that
+# we can control movement with arrow keys.
 player_speed = 0
 opponent_speed = 7
 
+# Variables to keep track of score so that we can end game
+# at specific score
 player_score = 0
 opponent_score = 0
 
@@ -287,24 +365,22 @@ while not game_end:
         if event.type == pygame.QUIT:
             game_end = False
             exit_game()
-
         # Controls
-        # Checks if ANY key is pressed
-        if event.type == pygame.KEYDOWN:
+        # Checks if ANY key is pressed down
+        elif event.type == pygame.KEYDOWN:
             # Checks if the pressed key is arrow down
             if event.key == pygame.K_DOWN:
                 player_speed += 7
             # Checks if the pressed key is arrow up
-            if event.key == pygame.K_UP:
+            elif event.key == pygame.K_UP:
                 player_speed -= 7
-
         # Checks if ANY key is released
-        if event.type == pygame.KEYUP:
+        elif event.type == pygame.KEYUP:
             # Checks if the released key is arrow down
             if event.key == pygame.K_DOWN:
                 player_speed -= 7
             # Checks if the released key is arrow up
-            if event.key == pygame.K_UP:
+            elif event.key == pygame.K_UP:
                 player_speed += 7
     # Event loop end
 
@@ -316,17 +392,20 @@ while not game_end:
     game_over()
 
     # Set background color
-    game_screen.fill(colours.get_colour("faded-black"))
+    game_screen.fill(get_colour("faded-black"))
 
     # Draw the shapes needed for the game
-    pygame.draw.rect(game_screen, colours.get_colour("blue"), player)
-    pygame.draw.rect(game_screen, colours.get_colour("green"), opponent)
-    pygame.draw.ellipse(game_screen, colours.get_colour("gold"), ball)
+    pygame.draw.rect(game_screen, get_colour("blue"), player)
+    pygame.draw.rect(game_screen, get_colour("green"), opponent)
+    pygame.draw.ellipse(game_screen, get_colour("gold"), ball)
 
     # Draw line to separate player and opponent
-    pygame.draw.aaline(game_screen, colours.get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
+    pygame.draw.aaline(game_screen, get_colour("grey"), (screenW / 2, 0), (screenW / 2, screenH))
 
-    #
+    # If true, will keep
+    # running method so that the
+    # current_time variable can
+    # keep track of the time since pygame.init()
     if score_time:
         ball_restart()
 
@@ -342,7 +421,7 @@ while not game_end:
     name_of_player = score_data['players'][0]['name']
     points = score_data['players'][0]['score']
     date_of_win = score_data['players'][0]['date']
-    game_screen.blit(render_text(f'{name_of_player} won - {points} on {date_of_win}', 15, 'white'), (65, 50))
+    game_screen.blit(render_text(f'{name_of_player} won - {points} on {date_of_win}', 15, 'white'), (135, 50))
 
     pygame.display.flip()
     clock.tick(60)
