@@ -69,7 +69,8 @@ def game_over():
 
     # Opens file in append mode if it exists, if not the file will be created
     if player_score == 5:
-        # At game end, player will be asked to type their name in the terminal
+        # At game end, player will be asked to type their name in the terminal.
+        # Players cannot leave name empty and have to type a name for the game to finish
         player_name = input("Enter your name in the terminal below: ")
         if player_name == "":
             print("Name can't be empty")
