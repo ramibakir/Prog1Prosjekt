@@ -79,7 +79,7 @@ def game_over():
             game_screen.blit(render_text(f"GAME OVER - {player_name} won with {player_score} points", 15, 'white'),
                              (55, 50))
 
-            with open('high-score1.json') as f_game_over:
+            with open('high-score.json') as f_game_over:
                 info = json.load(f_game_over)
             # Gets top level of json file
             json_top_level = info['players']
@@ -99,7 +99,7 @@ def game_over():
             # Will make a copy of content before overwriting
             # previous values so that the new values
             # will properly align inside player block
-            with open('high-score1.json', 'w') as w_file:
+            with open('high-score.json', 'w') as w_file:
                 json.dump(info, w_file, ensure_ascii=False, indent=4)
 
             game_end = False
@@ -244,7 +244,7 @@ def ball_restart():
         game_screen.blit(start, (280, 250))
 
     # If result is less than 3 secs, set ball to not move
-    if current_time - score_time < 3000:
+    if current_time - score_time < 3500:
         ball_speed_x, ball_speed_y = 0, 0
     else:
         # If result is greater than 3 secs, set ball to move randomly
@@ -319,7 +319,7 @@ while menu_active:
                 menu_screen.fill(get_colour('black'))
                 # Opens file in read mode and iterates through file
                 # and gives variables data based on key specified
-                scores_file = open('high-score1.json', 'r')
+                scores_file = open('high-score.json', 'r')
                 score_data = json.loads(scores_file.read())
                 # Set y position of the text to be a constant
                 y_pos = 50
@@ -434,7 +434,7 @@ while not game_end:
 
     # Opens file in reading mode and sets the first entry of file
     # at the top of the game screen during gameplay.
-    scores_file = open('high-score1.json', 'r')
+    scores_file = open('high-score.json', 'r')
     score_data = json.loads(scores_file.read())
     name_of_player = score_data['players'][0]['name']
     points = score_data['players'][0]['score']
