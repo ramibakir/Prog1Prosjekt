@@ -7,6 +7,14 @@ import pygame
 
 
 def get_colour(colour_name):
+    """ Method which returns an RGB value
+    of a colour from the list based on the name colour.
+
+    Takes a string as parameter which is the colour name
+    and returns the value if that colour is available in the list
+
+    If colour is not available it will print that the specified colour
+    is not in the list."""
     colours = {
         "white": (255, 255, 255),
         "black": (0, 0, 0),
@@ -18,9 +26,11 @@ def get_colour(colour_name):
         'faded-black': (54, 54, 64)
     }
 
-    for colour, name in colours.items():
+    for colour, value in colours.items():
         if colour_name == colour:
-            return name
+            return value
+        elif colour_name not in colours:
+            print(f'{colour_name} is not available in the list')
 
 
 def render_text(text, size, colour):
@@ -47,47 +57,52 @@ def game_over():
     """Exits game when one player reaches 5 points
     If player reaches 5 first, the player has to
     input their name in the terminal for the score
-    to be saved with their name in file.
+    to be saved with their name in file. Name cannot be empty.
 
     Screen should display game over text with player name
-    or Computer with the score TODO add more info
-    """
+    or Computer with the score -> is barley visible.
+
+    When saving the file, a copy of the previous content will
+    be made which the updated values will be appended to. The
+    previous content will then be overwritten with the updates."""
     global game_end, win_time
 
     # Opens file in append mode if it exists, if not the file will be created
     if player_score == 5:
         # At game end, player will be asked to type their name in the terminal
         player_name = input("Enter your name in the terminal below: ")
+        if player_name == "":
+            print("Name can't be empty")
+        else:
+            # Add GAME OVER to screen, appears for one second (barely visible).
+            game_screen.blit(render_text(f"GAME OVER - {player_name} won with {player_score} points", 15, 'white'),
+                             (55, 50))
 
-        # Add GAME OVER to screen, appears for one second (barely visible).
-        game_screen.blit(render_text(f"GAME OVER - {player_name} won with {player_score} points", 15, 'white'),
-                         (55, 50))
+            with open('high-score1.json') as f_game_over:
+                info = json.load(f_game_over)
+            # Gets top level of json file
+            json_top_level = info['players']
 
-        with open('high-score1.json') as f_game_over:
-            info = json.load(f_game_over)
-        # Gets top level of json file
-        json_top_level = info['players']
+            # Sets new values inside dict to be appended
+            # to json_top_level
+            score_updates = {
+                'name': player_name,
+                'score': f'{player_score} points',
+                'date': win_time
+            }
 
-        # Sets new values inside dict to be appended
-        # to json_top_level
-        score_updates = {
-            'name': player_name,
-            'score': f'{player_score} points',
-            'date': win_time
-        }
+            # Appends the value of player_name, player_score and win_time to file on the player key
+            json_top_level.append(score_updates)
 
-        # Appends the value of player_name, player_score and win_time to file on the player key
-        json_top_level.append(score_updates)
+            # Writes the values to the file.
+            # Will make a copy of content before overwriting
+            # previous values so that the new values
+            # will properly align inside player block
+            with open('high-score1.json', 'w') as w_file:
+                json.dump(info, w_file, ensure_ascii=False, indent=4)
 
-        # Writes the values to the file.
-        # Will make a copy of content before overwriting
-        # previous values so that the new values
-        # will properly align inside player block
-        with open('high-score1.json', 'w') as w_file:
-            json.dump(info, w_file, ensure_ascii=False, indent=4)
-
-        game_end = False
-        exit_game()
+            game_end = False
+            exit_game()
     elif opponent_score == 5:
         # Add GAME OVER to screen, appears for one second (barely visible).
         game_screen.blit(render_text(f"GAME OVER - Computer won with {opponent_score} points", 15, 'white'),
@@ -197,7 +212,7 @@ def ball_restart():
     1 or -1 so that the direction is the ball goes after reset is
     randomized.
 
-    Includes a timer which blits images to the screen which
+    Includes a timer which blit(s) images to the screen which
     acts as a countdown for the player to be ready.
 
     If a point has been scored and the time between score_time
@@ -211,14 +226,16 @@ def ball_restart():
     # Center the ball after it hits right or left wall
     ball.center = (int(screenW / 2), int(screenH / 2))
 
-    # Count down for player to be ready
-    if current_time - score_time < 700:
+    # Count down for player to be ready. Displays
+    # image if the result of current_time - score_time
+    # is greater than the left value or less than the right value
+    if current_time - score_time < 500:
         tomato = pygame.image.load('images/tomato.png')
         game_screen.blit(tomato, (350, 250))
-    elif 700 < current_time - score_time < 1400:
+    elif 500 < current_time - score_time < 1000:
         lemon = pygame.image.load('images/lemon.png')
         game_screen.blit(lemon, (350, 250))
-    elif 1400 < current_time - score_time < 2000:
+    elif 1000 < current_time - score_time < 2000:
         apple = pygame.image.load('images/apple.png')
         game_screen.blit(apple, (350, 250))
     elif 2000 < current_time - score_time < 3000:
@@ -233,12 +250,9 @@ def ball_restart():
         # Set ball to go in a random direction after reset
         ball_speed_y = 7 * random.choice((1, -1))
         ball_speed_x = 7 * random.choice((1, -1))
+        # When set to None will prevent ball from
+        # moving when the game starts the first time
         score_time = None
-
-
-def blit_text(text, font_colour, font_size, pos_x, pos_y):
-    # TODO docstring
-    menu_screen.blit(render_text(text, font_size, font_colour), (pos_x, pos_y))
 
 
 # Initialize pygame
@@ -250,6 +264,8 @@ screenW, screenH = 800, 600
 menu_screen = pygame.display.set_mode((screenW, screenH))
 menu_screen.fill(get_colour('faded-black'))
 
+# Get a date for saving the score
+# and use it in d/m/y format
 now = datetime.utcnow()
 win_time = now.strftime("%d/%m/%Y")
 
@@ -304,16 +320,17 @@ while menu_active:
                 # and gives variables data based on key specified
                 scores_file = open('high-score1.json', 'r')
                 score_data = json.loads(scores_file.read())
-                # TODO make comment
+                # Set y position of the text to be a constant
                 y_pos = 50
                 for data in score_data['players']:
                     name_of_player = data['name']
                     points = data['score']
                     date_of_win = data['date']
-                    print(f'{name_of_player}: {points} on {date_of_win}')
-                    # Add scores from file to screen, should print each score underneath the previous one.
-                    # Right now, it prints both lines from file on top of each other.
-                    blit_text(f'{name_of_player}: {points} on {date_of_win}', 'white', 20, 50, y_pos)
+                    # Add scores from file to screen
+                    menu_screen.blit(render_text(f'{name_of_player}: {points} on {date_of_win}', 20, 'white'),
+                                     (50, y_pos))
+                    # For every text that has been blit to screen y_pos will have an added 30 px so that
+                    # the text moves down the previous value of y_pos + 30 (1: 50 + 30 = 80, 2: 80 + 30 = 110 ++)
                     y_pos += 30
 
         elif event.type == pygame.KEYDOWN:
@@ -345,14 +362,15 @@ ball_speed_y = 7 * random.choice((1, -1))
 # so that they can move. player_speed is 0 so that
 # we can control movement with arrow keys.
 player_speed = 0
-opponent_speed = 7
+opponent_speed = 5
 
 # Variables to keep track of score so that we can end game
 # at specific score
 player_score = 0
 opponent_score = 0
 
-# Score timer - will start the first time the game starts
+# If true, will start the timer found in ball_restart()
+# method, when the game starts for the first time
 score_time = True
 
 # Flag for game loop
@@ -414,8 +432,7 @@ while not game_end:
     game_screen.blit(render_text(f"{opponent_score}", 25, 'white'), (340, 200))
 
     # Opens file in reading mode and sets the first entry of file
-    # at the top of the game screen during gameplay
-
+    # at the top of the game screen during gameplay.
     scores_file = open('high-score1.json', 'r')
     score_data = json.loads(scores_file.read())
     name_of_player = score_data['players'][0]['name']

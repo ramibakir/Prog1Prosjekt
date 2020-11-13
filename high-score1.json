@@ -11,9 +11,14 @@
             "date": "11/11/2020"
         },
         {
-            "name": "Rami",
+            "name": "tester 2",
             "score": "5 points",
             "date": "12/11/2020"
+        },
+        {
+            "name": "tester 3",
+            "score": "5 points",
+            "date": "13/11/2020"
         }
     ]
 }
